@@ -1,14 +1,10 @@
-# SQLite CRUD API
+# FastAPI SQLite CRUD API
 
-A FastAPI application integrated with SQLite for local data persistence.
+A RESTful Task Management API built with FastAPI, SQLite, and Docker Compose with persistent volume storage.
 
-## 1. Persistence Rationale
-SQLite provides zero-configuration, single-file local persistence (`tasks.db`). Data automatically persists across server restarts.
+## Setup & Running
 
-## 2. Storage Location
-Database file path: `./tasks.db`
-
-## 3. Local Setup & Execution
-1. Install dependencies:
+### Option 1: Run with Docker Compose (Recommended)
+1. Launch the application stack:
    ```bash
-   pip install fastapi uvicorn
+   docker compose up --build -d
