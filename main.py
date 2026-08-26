@@ -1,77 +1,71 @@
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel
-from database import get_db_connection, init_db
+import database
 
 app = FastAPI()
 
 @app.on_event("startup")
 def startup():
-    init_db()
+    database.init_db()
 
 class TaskCreate(BaseModel):
     title: str
+    done: bool = False
 
 class TaskUpdate(BaseModel):
     title: str
     done: bool
 
-def format_task(row):
-    return {"id": row["id"], "title": row["title"], "done": bool(row["done"])}
-
 @app.get("/tasks")
 def get_tasks():
-    conn = get_db_connection()
-    rows = conn.execute("SELECT * FROM tasks").fetchall()
+    conn = database.get_db_connection()
+    tasks = conn.execute("SELECT * FROM tasks").fetchall()
     conn.close()
-    return [format_task(row) for row in rows]
+    return [dict(task) for task in tasks]
 
 @app.get("/tasks/{task_id}")
 def get_task(task_id: int):
-    conn = get_db_connection()
-    row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
+    conn = database.get_db_connection()
+    task = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
     conn.close()
-    if not row:
-        raise HTTPException(status_code=404, detail={"error": "Task not found"})
-    return format_task(row)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return dict(task)
 
-@app.post("/tasks", status_code=201)
+@app.post("/tasks", status_code=status.HTTP_201_CREATED)
 def create_task(task: TaskCreate):
-    title = task.title.strip()
-    if not title:
-        raise HTTPException(status_code=400, detail={"error": "Title cannot be empty"})
-    conn = get_db_connection()
+    if not task.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    conn = database.get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, 0)", (title,))
+    cursor.execute("INSERT INTO tasks (title, done) VALUES (?, ?)", (task.title, task.done))
     conn.commit()
     new_id = cursor.lastrowid
     conn.close()
-    return {"id": new_id, "title": title, "done": False}
+    return {"id": new_id, "title": task.title, "done": task.done}
 
 @app.put("/tasks/{task_id}")
 def update_task(task_id: int, task: TaskUpdate):
-    title = task.title.strip()
-    if not title:
-        raise HTTPException(status_code=400, detail={"error": "Title cannot be empty"})
-    conn = get_db_connection()
+    if not task.title.strip():
+        raise HTTPException(status_code=400, detail="Title cannot be empty")
+    conn = database.get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
-    if not cursor.fetchone():
-        conn.close()
-        raise HTTPException(status_code=404, detail={"error": "Task not found"})
-    cursor.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?", (title, int(task.done), task_id))
+    cursor.execute("UPDATE tasks SET title = ?, done = ? WHERE id = ?", (task.title, task.done, task_id))
     conn.commit()
-    conn.close()
-    return {"id": task_id, "title": title, "done": task.done}
-
-@app.delete("/tasks/{task_id}", status_code=204)
-def delete_task(task_id: int):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
-    if not cursor.fetchone():
+    if cursor.rowcount == 0:
         conn.close()
-        raise HTTPException(status_code=404, detail={"error": "Task not found"})
+        raise HTTPException(status_code=404, detail="Task not found")
+    conn.close()
+    return {"id": task_id, "title": task.title, "done": task.done}
+
+@app.delete("/tasks/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_task(task_id: int):
+    conn = database.get_db_connection()
+    cursor = conn.cursor()
     cursor.execute("DELETE FROM tasks WHERE id = ?", (task_id,))
     conn.commit()
+    if cursor.rowcount == 0:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
     conn.close()
     return None
