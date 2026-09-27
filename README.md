@@ -23,3 +23,36 @@ A lightweight RESTful CRUD API built with **FastAPI**, **SQLAlchemy**, and an em
 ```bash
 git clone [https://github.com/RayyanAHR/FAI-A2-SQLite-CRUD-API.git](https://github.com/RayyanAHR/FAI-A2-SQLite-CRUD-API.git)
 cd FAI-A2-SQLite-CRUD-API
+
+```
+
+### 2. Set up virtual environment
+
+```bash
+python -m venv venv
+# On Windows:
+venv\Scripts\activate
+# On Linux/macOS:
+source venv/bin/activate
+
+```
+
+### 3. Install dependencies
+
+```bash
+pip install -r requirements.txt
+
+```
+
+### 4. Run the API server
+
+```bash
+uvicorn app.main:app --reload
+
+```
+
+Access interactive documentation at `http://127.0.0.1:8000/docs`.
+
+```
+
+```
